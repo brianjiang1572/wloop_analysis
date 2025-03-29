@@ -20,57 +20,6 @@ def extract_loops(data_path, file_number, start_time, which_loop):
     all_t0 = []
     all_t1 = []
     
-    for item in elem:
-        wloop = item.find("WilsonLoop")
-        if wloop != None:    
-            individual_t0 = [] #has size r
-            individual_t1 = [] #has size r
-            
-            r_wilsloop2 = wloop.findall(f"wils_loop{which_loop}/wloop{which_loop}/elem/r")
-            loop_wilsloop2 = wloop.findall(f"wils_loop{which_loop}/wloop{which_loop}/elem/loop")
-            
-            potential = []
-            r = []
-            for i, loops in enumerate(loop_wilsloop2):
-                text_data = string_to_double_array(loops.text)
-                t0 = text_data[start_time]
-                t1 = text_data[start_time + 1]
-                individual_t0.append(text_data[start_time])
-                individual_t1.append(text_data[start_time+1])
-                r.append(int(r_wilsloop2[i].text))
-        
-            all_t0.append(individual_t0)
-            all_t1.append(individual_t1)
- 
-    if which_loop == 3:
-        chunk = int(len(r)/5)
-        r = np.hstack((np.linspace(1, chunk*2, chunk*2)*2**0.5, 
-                      np.linspace(1, chunk, chunk)*5**0.5, 
-                      np.linspace(1, chunk*2, chunk*2)*3**0.5))
-    return np.array(r), all_t0, all_t1
-
-import xml.etree.ElementTree as ET 
-import numpy as np
-import matplotlib.pyplot as plt
-import errors
-
-
-def string_to_double_array(string):
-    """Converts a string of doubles to an array of doubles."""
-    return [float(x) for x in string.split()]
-
-def extract_loops(data_path, file_number, start_time, which_loop):
-    xmlfile = f"{data_path}/{file_number}.dat" 
-    tree = ET.parse(xmlfile)  
-    root = tree.getroot() 
-    inline_observables = root.find("InlineObservables")
-    elem = inline_observables.findall("elem")
-
-    #Wloops of timesize t0 and t1 over all r for the file being read
-    #has size num smoothings * r
-    all_t0 = []
-    all_t1 = []
-    
     which_time = 0
     for item in elem:
         wloop = item.find("WilsonLoop")
