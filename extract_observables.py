@@ -3,12 +3,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import errors
 
-
 def string_to_double_array(string):
     """Converts a string of doubles to an array of doubles."""
     return [float(x) for x in string.split()]
 
-def extract_loops(data_path, file_number, start_time, which_loop):
+def extract_loops(data_path, file_number, start_time, which_loop,
+                  time_diff = [1,1,1,1]):
+    
     xmlfile = f"{data_path}/{file_number}.dat" 
     tree = ET.parse(xmlfile)  
     root = tree.getroot() 
@@ -19,7 +20,7 @@ def extract_loops(data_path, file_number, start_time, which_loop):
     #has size num smoothings * r
     all_t0 = []
     all_t1 = []
-    
+        
     which_time = 0
     for item in elem:
         wloop = item.find("WilsonLoop")
@@ -35,7 +36,8 @@ def extract_loops(data_path, file_number, start_time, which_loop):
             for i, loops in enumerate(loop_wilsloop2):
                 text_data = string_to_double_array(loops.text)
                 individual_t0.append(text_data[start_time[which_time]])
-                individual_t1.append(text_data[start_time[which_time]+1])
+                individual_t1.append(text_data[start_time[which_time]+time_diff[which_time]])
+                
                 r.append(int(r_wilsloop2[i].text))
         
             all_t0.append(individual_t0)
@@ -53,7 +55,15 @@ def extract_loops(data_path, file_number, start_time, which_loop):
 
 
 class Data_Processing:
-    def __init__(self, data_path, start_time = [5,5,5,5]):
+    def __init__(self, data_path, start_time = [5,5,5,5], wflow = [0, 0.5, 1, 1.5]):
+
+        '''
+        data_path: data path
+        start_time: W_0 = W(r, start_time)
+        wflow: how much flow is done. If set_time_diff, W_1 = W(r, sqrt(8 * wflow))
+        '''
+
+        print("Initializing Wloop reading")
         self.data_path = data_path
         
         #will have size num files * num smoothings * r
@@ -61,7 +71,11 @@ class Data_Processing:
         self.wloop_t1 = []
         
         self.start_time = start_time
-    
+        
+        self.wflow = wflow
+        self.set_time_diff = True
+        self.time_diff_scale = 1 #easily do mass testing
+        
         self.file0 = 1250
         self.file1 = 2400
         self.file_step = 50
@@ -69,11 +83,21 @@ class Data_Processing:
         
         self.n_bootstraps = 100
         self.els_per_bootstrap = 100
-        
+       
+    def initialize_time_diff(self):
+        if self.set_time_diff:
+            self.time_diff = np.int64(np.round(np.sqrt(np.array(self.wflow)*8)))
+            self.time_diff[self.time_diff < 1] = 1
+        else:
+            self.time_diff = np.int64(np.ones(len(self.wflow))*self.time_diff_scale)
+
     def get_potential(self, number):
-        r_loop2, all_t0_loop2, all_t1_loop2 = extract_loops(self.data_path, number, self.start_time, 2)
+        r_loop2, all_t0_loop2, all_t1_loop2 = extract_loops(self.data_path, number, self.start_time, 2,
+                                                            time_diff = self.time_diff)
         if self.off_axis:
-            r_loop3, all_t0_loop3, all_t1_loop3 = extract_loops(self.data_path, number, self.start_time, 3)
+            r_loop3, all_t0_loop3, all_t1_loop3 = extract_loops(self.data_path, number, self.start_time, 3,
+                                                                time_diff = self.time_diff)
+            
             self.wloop_t0.append(np.concatenate((all_t0_loop2, all_t0_loop3), axis = 1))
             self.wloop_t1.append(np.concatenate((all_t1_loop2, all_t1_loop3), axis = 1))
             self.r = np.concatenate((r_loop2, r_loop3)) 
@@ -84,6 +108,8 @@ class Data_Processing:
             self.r = np.array(r_loop2)
     
     def read_all_files(self):
+        print("Reading data")
+        self.initialize_time_diff()
         for i in range(self.file0, self.file1, self.file_step):
             self.get_potential(i)
     
@@ -106,18 +132,18 @@ class Data_Processing:
         dt_1 = np.average(wloop1[self.rand_indices], axis = 0)
         return dt_0, dt_1
     
-    def find_potential(self, wloop0, wloop1):
+    def find_potential(self, wloop0, wloop1, time_diff = 1):
         dt_0, dt_1 = self.construct_bootstrap(wloop0, wloop1)
         N = len(dt_0)
-        ratio = np.ma.masked_invalid(np.log(abs(dt_0 / dt_1))) #this abs is bad...
+        ratio = np.ma.masked_invalid(np.log(abs(dt_0 / dt_1))/time_diff) #this abs is bad...
         mean = np.average(ratio, axis = 0)
         error = np.sqrt(np.sum((ratio - mean)**2, axis = 0)/N)      
         return [mean, error]
 
-    def find_force(self, wloop0, wloop1):
+    def find_force(self, wloop0, wloop1, time_diff = 1):
         dt_0, dt_1 = self.construct_bootstrap(wloop0, wloop1)
         N = len(dt_0)
-        ratio = np.ma.masked_invalid(np.log(abs(dt_0 / dt_1))) #this abs is bad...
+        ratio = np.ma.masked_invalid(np.log(abs(dt_0 / dt_1))/time_diff) #this abs is bad...
         force = []
         for i in range(ratio.shape[0]):
             force.append(-ratio[i][1:] + ratio[i][-1])
@@ -126,10 +152,11 @@ class Data_Processing:
         return [mean, error]
     
     def find_potential_errors(self):
-        return np.array([self.find_potential(self.wloop_t0[:,i], self.wloop_t1[:,i]) for i in range(self.wloop_t0.shape[1])])
+        print("Computing potential and errors")
+        return np.array([self.find_potential(self.wloop_t0[:,i], self.wloop_t1[:,i], time_diff = self.time_diff[i]) for i in range(self.wloop_t0.shape[1])])
    
     def find_force_errors(self):
-        return np.array([self.find_force(self.wloop_t0[:,i], self.wloop_t1[:,i]) for i in range(self.wloop_t0.shape[1])])
+        return np.array([self.find_force(self.wloop_t0[:,i], self.wloop_t1[:,i], time_diff = self.time_diff[i]) for i in range(self.wloop_t0.shape[1])])
     
     
     
