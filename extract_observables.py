@@ -9,13 +9,12 @@ def string_to_double_array(string):
 
 def extract_loops(data_path, file_number, start_time, which_loop,
                   time_diff = [1,1,1,1]):
-    
+
     xmlfile = f"{data_path}/{file_number}.dat" 
     tree = ET.parse(xmlfile)  
     root = tree.getroot() 
     inline_observables = root.find("InlineObservables")
     elem = inline_observables.findall("elem")
-
     #Wloops of timesize t0 and t1 over all r for the file being read
     #has size num smoothings * r
     all_t0 = []
@@ -27,7 +26,6 @@ def extract_loops(data_path, file_number, start_time, which_loop,
         if wloop != None:    
             individual_t0 = [] #has size r
             individual_t1 = [] #has size r
-            
             r_wilsloop2 = wloop.findall(f"wils_loop{which_loop}/wloop{which_loop}/elem/r")
             loop_wilsloop2 = wloop.findall(f"wils_loop{which_loop}/wloop{which_loop}/elem/loop")
             
@@ -51,7 +49,7 @@ def extract_loops(data_path, file_number, start_time, which_loop,
                       np.linspace(1, chunk, chunk)*5**0.5, 
                       np.linspace(1, chunk*2, chunk*2)*3**0.5))
         
-    return np.array(r), all_t0, all_t1
+    return np.array(r), np.array(all_t0), np.array(all_t1)
 
 
 class Data_Processing:
@@ -106,12 +104,13 @@ class Data_Processing:
             self.wloop_t0.append(all_t0_loop2)
             self.wloop_t1.append(all_t1_loop2)
             self.r = np.array(r_loop2)
-    
+        
     def read_all_files(self):
         print("Reading data")
         self.initialize_time_diff()
         for i in range(self.file0, self.file1, self.file_step):
             self.get_potential(i)
+        print(np.array(self.wloop_t0).shape)
     
         #sort it
         self.wloop_t0 = np.array(self.wloop_t0)
@@ -153,6 +152,7 @@ class Data_Processing:
     
     def find_potential_errors(self):
         print("Computing potential and errors")
+        #nsmoothings * 2 (mean and error) * r
         return np.array([self.find_potential(self.wloop_t0[:,i], self.wloop_t1[:,i], time_diff = self.time_diff[i]) for i in range(self.wloop_t0.shape[1])])
    
     def find_force_errors(self):
@@ -161,7 +161,7 @@ class Data_Processing:
     
     
 class jackknife_Data_Processing:
-    def __init__(self, data_path, start_time = 5):
+    def __init__(self, data_path, start_time = [5,5,5,5]):
         self.data_path = data_path
         
         #will have size num files * num smoothings * r
