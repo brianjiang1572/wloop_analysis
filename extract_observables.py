@@ -145,7 +145,7 @@ class Data_Processing:
         ratio = np.ma.masked_invalid(np.log(abs(dt_0 / dt_1))/time_diff) #this abs is bad...
         force = []
         for i in range(ratio.shape[0]):
-            force.append(-ratio[i][1:] + ratio[i][-1])
+            force.append(-ratio[i][1:] + ratio[i][:-1])
         mean = np.average(force, axis = 0)
         error = np.sqrt(np.sum((force - mean)**2, axis = 0)/N)
         return [mean, error]
