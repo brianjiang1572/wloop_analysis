@@ -2,7 +2,8 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 
-def plotting_stuff(ax, title, xlabel, ylabel, legend = False, grid = False, ticklabel = 20, axislabel = 20, titlelabel = 20):
+#originally 20, 20, 20
+def plotting_stuff(ax, title, xlabel, ylabel, legend = False, grid = False, ticklabel = 15, axislabel = 15, titlelabel = 15):
     ax.set_title(title, fontsize = titlelabel)
     ax.set_ylabel(ylabel, fontsize = axislabel)
     ax.set_xlabel(xlabel, fontsize = axislabel)
@@ -12,9 +13,9 @@ def plotting_stuff(ax, title, xlabel, ylabel, legend = False, grid = False, tick
     if(legend):
         ax.legend(fontsize = axislabel-5)
         
-
+#originally 8x8
 class Plotter:
-    def __init__(self, title, xlabel, ylabel, save_name = "", legend = False, xlen = 8, ylen = 8):
+    def __init__(self, title, xlabel, ylabel, save_name = "", legend = False, xlen = 5, ylen = 5):
         self.title = title
         self.xlabel = xlabel 
         self.ylabel = ylabel

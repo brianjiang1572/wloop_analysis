@@ -48,6 +48,9 @@ def extract_loops(data_path, file_number, start_time, which_loop,
         r = np.hstack((np.linspace(1, chunk*2, chunk*2)*2**0.5, 
                       np.linspace(1, chunk, chunk)*5**0.5, 
                       np.linspace(1, chunk*2, chunk*2)*3**0.5))
+
+    if which_loop == 2:
+        r = np.array(r) + 1
         
     return np.array(r), np.array(all_t0), np.array(all_t1)
 
