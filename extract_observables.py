@@ -1,7 +1,6 @@
 import xml.etree.ElementTree as ET 
 import numpy as np
 import matplotlib.pyplot as plt
-import errors
 
 def string_to_double_array(string):
     """Converts a string of doubles to an array of doubles."""
@@ -205,6 +204,8 @@ class jackknife_Data_Processing:
         self.r = np.array(sorted(self.r))
         
     def make_potential_blocks(self, i, j):
+        import errors as errors
+
         dt_0_blocks, N = errors.make_jackknife_blocks(self.wloop_t0[:,i][:,j])
         dt_1_blocks, N = errors.make_jackknife_blocks(self.wloop_t1[:,i][:,j])
         ratio = np.ma.masked_invalid(np.log10(abs(dt_0_blocks / dt_1_blocks))) 
